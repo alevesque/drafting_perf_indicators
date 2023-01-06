@@ -1,0 +1,51 @@
+from ._anvil_designer import RowTemplate1Template
+from anvil import *
+import anvil.users
+import anvil.tables as tables
+import anvil.tables.query as q
+from anvil.tables import app_tables
+import datetime
+
+class RowTemplate1(RowTemplate1Template):
+  def __init__(self, **properties):
+    # Set Form properties and Data Bindings.
+    self.init_components(**properties)
+    # Any code you write here will run before the form opens.
+    current_row_id = self.item.get_id()
+    current_row = app_tables.requests.get_by_id(current_row_id)
+    if(current_row['Time_to_Completion']):
+      self.check_box_complete.checked = 1
+
+  def check_box_complete_change(self, **event_args):
+    """This method is called when this checkbox is checked or unchecked"""
+    
+    #get current row of data
+    current_row_id = self.item.get_id()
+    current_row = app_tables.requests.get_by_id(current_row_id)
+    
+    #add parent form Log to RowTemplate1 class scope
+    Log = get_open_form()
+    
+    if(current_row['Date_Delivered']):
+      #print('if')
+      current_row.update(Date_Delivered=None,Time_to_Completion=None)
+      self.refresh_data_bindings()
+      self.check_box_complete.checked = False
+   
+    else: 
+      #print('else')
+      current_date = datetime.date.today()
+      elapsed_time = current_date - current_row['Date_Requested']  
+      #TODO: get view to refresh after updating (maybe do the update button in Log first since doesnt have scoping problem)    
+      current_row.update(Date_Delivered=current_date,Time_to_Completion=elapsed_time.days)
+      self.refresh_data_bindings()
+      self.check_box_complete.checked = True
+      
+
+      
+    Log.log_panel.items = app_tables.requests.search()
+    #print(current_row['Date_Delivered'])
+    #print(current_row['Time_to_Completion'])
+    pass
+  
+  
