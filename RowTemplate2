@@ -1,0 +1,45 @@
+from ._anvil_designer import RowTemplate2Template
+from anvil import *
+import anvil.server
+import anvil.users
+import anvil.tables as tables
+import anvil.tables.query as q
+from anvil.tables import app_tables
+
+class RowTemplate2(RowTemplate2Template):
+  def __init__(self, **properties):
+    # Set Form properties and Data Bindings.
+    self.init_components(**properties)
+    # Any code you write here will run before the form opens.
+    self.current_row_id = self.item.get_id()
+    self.current_row = app_tables.users.get_by_id(self.current_row_id)
+    self.check_boxes()
+
+  def check_boxes(self):
+    if(self.current_row['admin'] == True):
+      self.admin_status_check_box.checked = True
+    pass
+    
+
+  def admin_status_check_box_change(self, **event_args):
+    """This method is called when this checkbox is checked or unchecked"""
+    Admin_Panel = get_open_form()
+    Admin_Panel.user_panel_error_label.text = ''
+    print('Checkbox has been toggled to: {}'.format(self.admin_status_check_box.checked))
+
+    current_user = anvil.users.get_user()
+    #update user admin status
+    if(self.current_row['email'] != current_user['email']):
+      self.current_row.update(admin=self.admin_status_check_box.checked)
+    else:
+      Admin_Panel.user_panel_error_label.text = 'You can\'t demote yourself!'
+      print('You can\'t demote yourself!')
+    
+    Admin_Panel.refresh_table()
+    pass
+
+  
+
+
+  
+
