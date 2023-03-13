@@ -1,11 +1,15 @@
 from ._anvil_designer import RowTemplate1Template
 from anvil import *
+import anvil.server
 import anvil.users
 import anvil.tables as tables
 import anvil.tables.query as q
 from anvil.tables import app_tables
 import datetime
+#from ..Log import Log
 
+
+#### GOES UNDER LOG, TEMPLATE FOR DATA TABLE ROW #####
 class RowTemplate1(RowTemplate1Template):
   def __init__(self, **properties):
     # Set Form properties and Data Bindings.
@@ -13,7 +17,7 @@ class RowTemplate1(RowTemplate1Template):
     # Any code you write here will run before the form opens.
     current_row_id = self.item.get_id()
     current_row = app_tables.requests.get_by_id(current_row_id)
-    if(current_row['Time_to_Completion']):
+    if(current_row['Time_to_Completion'] != None):
       self.check_box_complete.checked = 1
 
   def check_box_complete_change(self, **event_args):
@@ -22,30 +26,41 @@ class RowTemplate1(RowTemplate1Template):
     #get current row of data
     current_row_id = self.item.get_id()
     current_row = app_tables.requests.get_by_id(current_row_id)
-    
+    current_date = datetime.date.today()
     #add parent form Log to RowTemplate1 class scope
     Log = get_open_form()
-    
-    if(current_row['Date_Delivered']):
-      #print('if')
-      current_row.update(Date_Delivered=None,Time_to_Completion=None)
-      self.refresh_data_bindings()
-      self.check_box_complete.checked = False
-   
-    else: 
-      #print('else')
-      current_date = datetime.date.today()
-      elapsed_time = current_date - current_row['Date_Requested']  
-      #TODO: get view to refresh after updating (maybe do the update button in Log first since doesnt have scoping problem)    
-      current_row.update(Date_Delivered=current_date,Time_to_Completion=elapsed_time.days)
-      self.refresh_data_bindings()
-      self.check_box_complete.checked = True
-      
+    Log.dd=None
+    Log.ttc=None
 
-      
-    Log.log_panel.items = app_tables.requests.search()
-    #print(current_row['Date_Delivered'])
-    #print(current_row['Time_to_Completion'])
+    #self.check_box_complete.checked = not self.check_box_complete.checked
+    if(self.check_box_complete.checked):
+      elapsed_time = current_date - current_row['Date_Requested']
+      Log.dd = current_date
+      Log.ttc = elapsed_time.days
+      print('Checkbox has been checked.')
+      print('Log.dd: {}'.format(Log.dd))
+      print('Log.ttc: {}'.format(Log.ttc))
+    else:
+      print('Checkbox has been unchecked.')
+      current_date = None
+
+    print('Checkbox has been toggled to {} in {} Mode.'.format(self.check_box_complete.checked,Log.ui_mode))
+    if Log.ui_mode == 'Edit':#Log.search_button.text == 'Confirm Edit':
+      #if completion box is unchecked (no self.ttc, self.dd), remove text from time_to_completion field in row
+      #(and date_delivered later once get first condition working)
+      if not Log.dd:
+        Log.deliv_date_picker.date = None
+        #current_row.update(Time_to_Completion=None)
+      else:
+        Log.deliv_date_picker.date = Log.dd
+        #print('Checkbox has been checked in Edit Mode.')
+      #print('Checkbox has been toggled to {} in Edit Mode.'.format(self.check_box_complete.checked))
+    elif Log.ui_mode == 'Search':#Log.search_button.text != 'Confirm Edit':
+      #print('Checkbox has been toggled to {} in Search Mode.'.format(self.check_box_complete.checked))
+      current_row.update(Date_Delivered=Log.dd,Time_to_Completion=Log.ttc)
+      print('Current row updated with dd: {} and ttc: {}.'.format(Log.dd,Log.ttc))
+      Log.reset_interface()
+      Log.refresh_table(mode=None)
     pass
   
   
