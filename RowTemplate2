@@ -6,6 +6,7 @@ import anvil.tables as tables
 import anvil.tables.query as q
 from anvil.tables import app_tables
 
+#### goes under admin_panel ########
 class RowTemplate2(RowTemplate2Template):
   def __init__(self, **properties):
     # Set Form properties and Data Bindings.
@@ -37,9 +38,3 @@ class RowTemplate2(RowTemplate2Template):
     
     Admin_Panel.refresh_table()
     pass
-
-  
-
-
-  
-
