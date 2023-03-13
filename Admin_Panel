@@ -1,0 +1,160 @@
+from ._anvil_designer import Admin_PanelTemplate
+from anvil import *
+import anvil.server
+import anvil.users
+import anvil.tables as tables
+import anvil.tables.query as q
+from anvil.tables import app_tables
+
+class Admin_Panel(Admin_PanelTemplate):
+  def __init__(self, **properties):
+    # Set Form properties and Data Bindings.
+    self.init_components(**properties)
+    self.populate_menus()
+    self.admin_user_panel.items = app_tables.users.search()
+    
+    #set input item tags for later identification
+    self.admin_type_drop_down.tag = 'type_listing'
+    self.admin_class_drop_down.tag = 'class_listing'
+    self.admin_designer_drop_down.tag = 'designer_listing'
+    
+    self.admin_type_text_box.tag = 'type_listing'
+    self.admin_class_text_box.tag = 'class_listing'
+    self.admin_designer_text_box.tag = 'designer_listing'
+    
+
+  def populate_menus(self):
+    
+    a = app_tables.dropdowns.search()
+    
+    self.admin_type_drop_down.items = [row['type_listing'] for row in a if(row['type_listing'])]
+    
+    self.admin_class_drop_down.items = [row['class_listing'] for row in a if(row['class_listing'])]
+
+    self.admin_designer_drop_down.items = [row['designer_listing'] for row in a if(row['designer_listing'])]
+
+    pass
+    
+  
+  def log_button_click(self, **event_args):
+    """This method is called when the button is clicked"""
+    open_form('Log')
+    pass
+
+  def results_button_click(self, **event_args):
+    """This method is called when the button is clicked"""
+    open_form('Results')
+    pass
+
+  def admin_panel_button_click(self, **event_args):
+    """This method is called when the button is clicked"""
+    open_form('Admin_Panel')
+    pass
+
+  def logout_click(self, **event_args):
+    """This method is called when the button is clicked"""
+    anvil.users.logout()
+    pass
+
+  def admin_delete_button_click(self, **event_args):
+    """This method is called when the button is clicked"""
+    #check stuff in dropdowns
+    values_to_delete = self.admin_validate_user_input(which_input='d')
+    print('Values to delete: {}'.format(values_to_delete))
+    if values_to_delete:
+      try:
+        self.admin_db_update(which_db='dropdowns', operation='del', **values_to_delete)
+      except:
+        self.admin_feedback_msg('Error updating database.')
+      else:
+        self.admin_clear_interface('d')
+        self.populate_menus()
+        self.admin_feedback_msg('Delete successful.')
+    pass
+
+  def admin_add_button_click(self, **event_args):
+    """This method is called when the button is clicked"""
+    #check for stuff in text boxes
+    values_to_add = self.admin_validate_user_input(which_input='t')
+    print(values_to_add)
+    
+    # Prevent duplicate menu listings:
+    # search db for each term user wants added. return list of the number of results for each.
+    # if the sum of results is zero, the term is not on the list yet and can be added
+    # i.e. user inputs 'a' in the type box, and 'b' in the class box, so search for type_listing='a' and
+    # class_listing = 'b'. neither are in the database, so search results are length 0
+    # list comprehension returns [0, 0], the sum of which is 0
+    # this evaluates to False, so `not 0` is True and the if-statement runs
+    if not sum([len(app_tables.dropdowns.search(**{term:values_to_add[term]})) for term in values_to_add]):
+      try:
+        self.admin_db_update(which_db='dropdowns', operation='add', **values_to_add)
+      except:
+        self.admin_feedback_msg('Error updating database.')
+      else:
+        self.admin_clear_interface('t')
+        self.populate_menus()
+        self.admin_feedback_msg('Update successful.')
+    else:
+      self.admin_feedback_msg('Duplicate entry, nothing added.')
+    pass
+
+  def admin_validate_user_input(self,which_input='td') -> str: #return list of values that are in the fields
+    #t, d passed each indicate whether to get values from the text boxes or dropdowns
+    user_values = dict()
+    if 't' in which_input:
+      places_to_look = [self.admin_type_text_box, self.admin_class_text_box, self.admin_designer_text_box]
+      for index, place in enumerate(places_to_look):
+        if place.text:
+          user_values[place.tag] = place.text.strip()
+
+    elif 'd' in which_input:
+      places_to_look = [self.admin_type_drop_down, self.admin_class_drop_down, self.admin_designer_drop_down]
+      for index, place in enumerate(places_to_look):
+        if place.selected_value:
+          user_values[place.tag] = place.selected_value.strip()
+          
+    if user_values:
+      return user_values
+    else:
+      self.admin_feedback_msg('Please input values.')
+      return None
+
+  #update dropdowns/user db with new/removed values
+  #may not actually need to update users db since acc creation is handled by the google service and no reason to del
+  def admin_db_update(self, which_db=None, operation=None, **kwargs):
+    if(operation == 'add'):
+      app_tables.dropdowns.add_row(**kwargs)
+      pass
+    elif(operation == 'del'):
+      #update which_db
+      records_to_del = app_tables.dropdowns.search(**kwargs)
+      #update record with new user edited values
+      for record in records_to_del:
+        record.delete()
+      pass
+  pass
+
+  #clears the boxes/dropdowns after add/del operation
+  def admin_clear_interface(self,clear_opt='tde'):
+    if 't' in clear_opt:
+      self.admin_type_text_box.text = None
+      self.admin_class_text_box.text = None
+      self.admin_designer_text_box.text = None
+    if 'd' in clear_opt:
+      self.admin_type_drop_down.selected_value = None
+      self.admin_class_drop_down.selected_value = None
+      self.admin_designer_drop_down.selected_value = None
+    if 'e' in clear_opt:
+      self.admin_feedback_msg('')
+    self.user_panel_error_label.text = ''
+    pass
+
+  #gives feedback to user in label
+  def admin_feedback_msg(self, mesg=''):
+    self.admin_error_label.text = mesg
+    pass
+
+
+  def refresh_table(self):
+    self.admin_user_panel.items = app_tables.users.search()
+    pass
